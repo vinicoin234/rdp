@@ -1,15 +1,41 @@
-# Run this as Administrator
-# Set your Ngrok authtoken
-ngrok config add-authtoken 2ym5mZBId3tJJExjByy7SG1Cmsl_2kSJNmjMPkvFLy5FKex1Z
+# ======================================
+# RDP over Ngrok Full Setup Script
+# ======================================
+# Ngrok authtoken from user input
+$NGROK_AUTHTOKEN = "2ym5mZBId3tJJExjByy7SG1Cmsl_2kSJNmjMPkvFLy5FKex1Z"
 
-# Download ngrok if not already installed
+# --------------------------------------
+# Step 1: Download and install Ngrok
+# --------------------------------------
 if (-Not (Test-Path ".\ngrok.exe")) {
+    Write-Host "Downloading ngrok..."
     Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
     Expand-Archive -Path "ngrok.zip" -DestinationPath "."
+    Remove-Item "ngrok.zip"
 }
 
-# Start Ngrok tunnel on RDP port 3389
+# --------------------------------------
+# Step 2: Add Ngrok authtoken
+# --------------------------------------
+Write-Host "Configuring ngrok authtoken..."
+.\ngrok.exe config add-authtoken $NGROK_AUTHTOKEN
+
+# --------------------------------------
+# Step 3: Enable RDP service and firewall
+# --------------------------------------
+Write-Host "Enabling Remote Desktop..."
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+# --------------------------------------
+# Step 4: Start Ngrok tunnel on RDP port 3389
+# --------------------------------------
+Write-Host "Starting ngrok tunnel on port 3389..."
 Start-Process -NoNewWindow -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389"
 
-Write-Host "`nNgrok is now tunneling RDP on port 3389."
-Write-Host "Check your Ngrok dashboard at: https://dashboard.ngrok.com to see the forwarded address."
+Write-Host "`n====================================="
+Write-Host "Ngrok tunnel running. To access RDP:"
+Write-Host "1. Go to https://dashboard.ngrok.com/"
+Write-Host "2. Copy the TCP address (e.g., 0.tcp.ngrok.io:xxxxx)"
+Write-Host "3. Use it in your RDP client to connect."
+Write-Host "====================================="
