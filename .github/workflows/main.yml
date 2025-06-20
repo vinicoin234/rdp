@@ -1,41 +1,31 @@
-name: WINDOWS 2022 RDP
+name: RDP with ngrok
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: windows-2022
-    timeout-minutes: 9999
-
+  rdp-ngrok:
+    runs-on: windows-latest
     steps:
-      - name: Download Ngrok and dependencies
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download ngrok
         run: |
-          Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-          Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/start.bat -OutFile start.bat
-          Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/download1.jpeg -OutFile wallpaper.bat
-          Invoke-WebRequest https://raw.githubusercontent.com/Vip3rLi0n/Ngrok-RDPs/main/resources/loop.ps1 -OutFile loop.ps1
+          Invoke-WebRequest -Uri https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+          Expand-Archive ngrok.zip -DestinationPath ngrok
 
-      - name: Extract Ngrok
-        run: Expand-Archive ngrok.zip
-
-      - name: Authenticate Ngrok
-        run: ./ngrok/ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-
-      - name: Enable RDP on Windows Server
+      - name: Add ngrok authtoken
         run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          Copy-Item wallpaper.bat D:\a\wallpaper.bat
+          .\ngrok\ngrok.exe config add-authtoken 2ym5mZBId3tJJExjByy7SG1Cmsl_2kSJNmjMPkvFLy5FKex1Z
 
-      - name: Start Ngrok Tunnel (Foreground)
-        run: ./ngrok/ngrok.exe tcp --region ap 3389
+      - name: Start ngrok tunnel for RDP
+        run: |
+          Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp 3389"
+          Start-Sleep -Seconds 5
 
-      - name: Run RDP Setup Script
-        run: cmd /c start.bat
-
-      - name: Keep Session Alive
-        run: powershell.exe -ExecutionPolicy Bypass -File loop.ps1
+      - name: Display ngrok tunnel info
+        run: |
+          Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels > tunnels.json
+          Get-Content tunnels.json
+        continue-on-error: true
